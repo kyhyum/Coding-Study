@@ -1,204 +1,168 @@
+#include <string>
 #include <vector>
-#include <queue>
 #include <iostream>
+#include <queue>
 #include <algorithm>
 using namespace std;
 
-void GameBoardReversing(vector<vector<int>> &my_board);
-vector<vector<pair<int, int>>> PuzzleReduction(vector<vector<pair<int, int>>> puzzles);
-vector<vector<pair<int, int>>> PuzzleDivision(vector<vector<int>> &tables);
-vector<vector<pair<int, int>>> PuzzleRotation(vector<vector<pair<int, int>>> puzzles);
-int PuzzleMatching(vector<vector<pair<int, int>>> boardBlanks, vector<vector<pair<int, int>>> puzzles);
+vector<vector<pair<int, int>>> blankpiece;
+vector<vector<pair<int, int>>> puzzlepiece;
 
-//메인 실행 함수
-int solution(vector<vector<int>> game_board, vector<vector<int>> table)
-{
-    // 1) game_board의 원소들을 반전
-    GameBoardReversing(game_board);
+vector<vector<int>> game_boards;
+vector<vector<int>> tables;
 
-    // 2) game_board의 빈칸 덩어리들 탐색
-    vector<vector<pair<int, int>>> boardBlanks = PuzzleDivision(game_board);
+bool blank_visited[2500] = { false, };
+bool puzzle_visited[2500] = { false, };
 
-    // 3) table의 조각들 탐색
-    vector<vector<pair<int, int>>> puzzles = PuzzleDivision(table);
+int XY;
 
-    // 4) 3번에서 찾은 조각들을 2번에서 찾은 빈칸들과 비교하며 퍼즐 맞추기
-    int answer = PuzzleMatching(boardBlanks, puzzles);
+vector<pair<int, int>> sortblocks(vector<pair<int, int>> boards) {
 
-    return answer;
-}
-
-//게임보드 0-1 반전
-void GameBoardReversing(vector<vector<int>> &my_board)
-{
-    for (int i = 0; i < my_board.size(); i++)
-    {
-        for (int j = 0; j < my_board[i].size(); j++)
-        {
-            if (my_board[i][j])
-                my_board[i][j] = 0;
-            else
-                my_board[i][j] = 1;
+    int minx = 51;
+    int miny = 51;
+    for (int j = 0; j < boards.size(); j++) {
+        if (boards[j].first < minx) {
+            minx = boards[j].first;
+        }
+        if (boards[j].second < miny) {
+            miny = boards[j].second;
         }
     }
+    for (int j = 0; j < boards.size(); j++) {
+        boards[j].first -= minx;
+        boards[j].second -= miny;
+    }
+    sort(boards.begin(), boards.end());
+
+    return boards;
+
 }
 
-//보드의 빈칸 덩어리들과 퍼즐들의 좌표를 [0,0] 기준으로 변경
-vector<vector<pair<int, int>>> PuzzleReduction(vector<vector<pair<int, int>>> puzzles)
-{
-    for (int i = 0; i < puzzles.size(); i++)
-    {
-        int minI = 1000;
-        int minJ = 1000;
-
-        for (int j = 0; j < puzzles[i].size(); j++)
-        {
-            if (puzzles[i][j].first < minI)
-                minI = puzzles[i][j].first;
-
-            if (puzzles[i][j].second < minJ)
-                minJ = puzzles[i][j].second;
+vector<pair<int, int>> spin(vector<pair<int, int>> boards) {
+        int max = 0;
+        for (int i = 0; i < boards.size(); i++) {
+            if (boards[i].first > max) {
+                max = boards[i].first;
+            }
+            if (boards[i].second > max) {
+                max = boards[i].second;
+            }
         }
-
-        for (int j = 0; j < puzzles[i].size(); j++)
-        {
-            puzzles[i][j].first -= minI;
-            puzzles[i][j].second -= minJ;
+        vector<pair<int, int>> spin_piece;
+        for (int i = 0; i < boards.size(); i++) {
+            spin_piece.push_back({ max - boards[i].second , boards[i].first});
         }
+        return sortblocks(spin_piece);
+}
+
+
+
+void bfs(int a, int y, int x) {
+    vector<vector<int>> boards;
+    queue<pair<int, int>> que;
+    vector<pair<int, int>> temp;
+
+    if (a == 0) {
+        boards = game_boards;
+    }
+    else {
+        boards = tables;
     }
 
-    return puzzles;
-}
+    int dx[] = { -1,0,1,0 };
+    int dy[] = { 0,1,0,-1 };
 
-//퍼즐 나누기
-vector<vector<pair<int, int>>> PuzzleDivision(vector<vector<int>> &tables)
-{
-    vector<vector<pair<int, int>>> result;
-    int new_i = 0;
+    que.push({ y,x });
+    if (a == 0) {
+        boards[y][x] = 1;
+    }
+    else {
+        boards[y][x] = 0;
+    }
+    temp.push_back({ y,x });
+    while (!que.empty()) {
+        y = que.front().first;
+        x = que.front().second;
+        for (int i = 0; i < 4; i++) {
+            int nx = x + dx[i];
+            int ny = y + dy[i];
 
-    while (true)
-    {
-        vector<pair<int, int>> temp;
-        queue<pair<int, int>> q;
+            if (nx < 0 || ny < 0 || nx >= XY || ny >= XY)   continue;
 
-        for (int i = new_i; i < tables.size(); i++)
-        {
-            for (int j = 0; j < tables.size(); j++)
-            {
-                if (tables[i][j] == 1)
-                {
-                    q.push(make_pair(i, j));
-                    tables[i][j] = 0;
-                    new_i = i;
-                    break;
+            if (boards[ny][nx] == a) {
+                que.push({ ny,nx });
+                if (a == 1) {
+                    boards[ny][nx] = 0;
+                    temp.push_back({ ny,nx });
+                }
+                else {
+                    boards[ny][nx] = 1;
+                    temp.push_back({ ny,nx });
                 }
             }
-
-            if (!q.empty())
-                break;
         }
-
-        if (q.empty())
-            break;
-
-        while (!q.empty())
-        {
-            int cur_i = q.front().first;
-            int cur_j = q.front().second;
-            temp.push_back(q.front());
-            q.pop();
-
-            if (cur_i > 0 && tables[cur_i - 1][cur_j]) //상
-            {
-                q.push(make_pair(cur_i - 1, cur_j));
-                tables[cur_i - 1][cur_j] = 0;
-            }
-            if (cur_i < tables.size() - 1 && tables[cur_i + 1][cur_j]) //하
-            {
-                q.push(make_pair(cur_i + 1, cur_j));
-                tables[cur_i + 1][cur_j] = 0;
-            }
-            if (cur_j > 0 && tables[cur_i][cur_j - 1]) //좌
-            {
-                q.push(make_pair(cur_i, cur_j - 1));
-                tables[cur_i][cur_j - 1] = 0;
-            }
-            if (cur_j < tables.size() - 1 && tables[cur_i][cur_j + 1]) //우
-            {
-                q.push(make_pair(cur_i, cur_j + 1));
-                tables[cur_i][cur_j + 1] = 0;
-            }
-        }
-
-        sort(temp.begin(), temp.end());
-
-        result.push_back(temp);
+        que.pop();
     }
-
-    result = PuzzleReduction(result);
-    return result;
-}
-
-//행렬 회전: -90도 회전(반시계방향)
-vector<vector<pair<int, int>>> PuzzleRotation(vector<vector<pair<int, int>>> puzzles)
-{
-    for (int i = 0; i < puzzles.size(); i++)
-    {
-        int N = -1;
-        //N = max(puzzles[i][j].first || puzzles[i][j].second)
-        for (int j = 0; j < puzzles[i].size(); j++)
-        {
-            if (puzzles[i][j].first > N)
-                N = puzzles[i][j].first;
-
-            if (puzzles[i][j].second > N)
-                N = puzzles[i][j].second;
-        }
-
-        for (int j = 0; j < puzzles[i].size(); j++)
-            puzzles[i][j] = make_pair(N - puzzles[i][j].second, puzzles[i][j].first);
-
-        sort(puzzles[i].begin(), puzzles[i].end());
+    if (a == 0) {
+        game_boards = boards;
     }
-
-    puzzles = PuzzleReduction(puzzles);
-    return puzzles;
+    else {
+        tables = boards;
+    }
+    if (a == 0) {
+        blankpiece.push_back(temp);
+    }
+    else {
+        puzzlepiece.push_back(temp);
+    }
 }
-
-//퍼즐 맞추기
-int PuzzleMatching(vector<vector<pair<int, int>>> boardBlanks, vector<vector<pair<int, int>>> puzzles)
-{
-    int temp_cnt = 1;
+void extraction(int a) {
+    for (int i = 0; i < XY; i++) {
+        for (int j = 0; j < XY; j++) {
+            if (a == 0) {
+                if (game_boards[i][j] == a) {
+                    bfs(a, i, j);
+                }
+            }
+            else {
+                if (tables[i][j] == a) {
+                    bfs(a, i, j);
+                }
+            }
+        }
+    }
+}
+int solution(vector<vector<int>> game_board, vector<vector<int>> table) {
     int answer = 0;
+    XY = game_board.size();
+    game_boards = game_board;
+    tables = table;
+    extraction(1);
+    extraction(0);
+    for (int i = 0; i < puzzlepiece.size(); i++) {
+        puzzlepiece[i] = sortblocks(puzzlepiece[i]);
+    }
+    for (int i = 0; i < blankpiece.size(); i++) {
+        blankpiece[i] = sortblocks(blankpiece[i]);
+    }
 
-    for (int r = 0; r < 4; r++)
-    {
-        for (int i = 0; i < boardBlanks.size(); i++)
-        {
-            for (int j = 0; j < puzzles.size(); j++)
-            {
-                if (boardBlanks[i].size() == puzzles[j].size())
-                {
-                    int k = 0;
-                    for (k = 0; k < boardBlanks[i].size(); k++)
-                        if (boardBlanks[i][k] != puzzles[j][k])
-                            break;
-
-                    if (k == boardBlanks[i].size())
-                    {
-                        boardBlanks.erase(boardBlanks.begin() + i);
-                        puzzles.erase(puzzles.begin() + j);
-                        i--;
-
-                        answer += k;
+    for (int i = 0; i < blankpiece.size(); i++) {
+        for (int j = 0; j < puzzlepiece.size(); j++) {
+            if (blankpiece[i].size() == puzzlepiece[j].size() && blank_visited[i] == false && puzzle_visited[j] == false) {
+                for (int r = 0; r < 4; r++) {
+                    if (blankpiece[i] == puzzlepiece[j]) {
+                        cout << i << " " << j << endl;
+                        answer += puzzlepiece[j].size();
+                        puzzle_visited[j] = true;
+                        blank_visited[i] = true;
                         break;
                     }
+                    puzzlepiece[j] = spin(puzzlepiece[j]);
                 }
-            } //end_for_j
-        }     //end_for_i
+            }
 
-        puzzles = PuzzleRotation(puzzles);
-    } //end_for_r
-
+        }
+    }
+    
     return answer;
 }
