@@ -1,18 +1,22 @@
 #include <string>
 #include <vector>
-#include <set>
+#include <algorithm>
 #include <iostream>
 using namespace std;
-bool solution(vector<string> phone_book) {
-    set<string> tmp;
-    for (auto& number : phone_book)
-        tmp.insert(number);
-    for (auto it1 = tmp.begin(); it1 != tmp.end(); ++it1)
-        for (auto it2 = it1; it2 != tmp.end(); ++it2)
-            if (it1 != it2)
-                if (it2->find(*it1) == 0)
-                    return false;
-                else
-                    break;
-    return true;
+
+bool solution(vector<string> phoneBook) {
+    bool answer = true;
+
+    sort(phoneBook.begin(), phoneBook.end());
+
+    for ( int i = 0 ; i < phoneBook.size() - 1 ; i++ )
+    {
+        if ( phoneBook[i] == phoneBook[i+1].substr(0, phoneBook[i].size()) )
+        {
+            answer = false;
+            break;
+        }
+    }
+
+    return answer;
 }
